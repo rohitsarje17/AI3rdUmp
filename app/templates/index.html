@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <title>Third Umpire Decision</title>
+    <style>
+        .feature-box {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+        .feature-option {
+            width: 150px;
+            height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #000;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .feature-option:hover {
+            background-color: #f0f0f0;
+        }
+        .no-ball { background-color: #ffcccc; }
+        .runout-stumping { background-color: #ccffcc; }
+        .caught-behind { background-color: #ccccff; }
+        .frame {
+            margin: 10px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            display: inline-block;
+        }
+        .frame img {
+            max-width: 100%;
+            height: auto;
+        }
+        .frame-container {
+            position: relative;
+            width: 640px; /* Adjust based on your frame size */
+            height: 480px; /* Adjust based on your frame size */
+        }
+        .frame-container img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+        }
+        .decision-box {
+            width: 200px;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #000;
+            margin-top: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Third Umpire Decision Automation</h1>
+        <form action="/process" method="post" enctype="multipart/form-data" onsubmit="showPending()">
+            <label for="video">Upload Video:</label>
+            <input type="file" id="video" name="video" accept="video/*" required>
+            
+            <label for="feature">Select Feature:</label>
+            <select id="feature" name="feature" required>
+                <option value="no_ball">No Ball Detection</option>
+                <option value="runout_stumping">Runout/Stumping Detection</option>
+                <option value="caught_behind">Caught Behind Detection</option>
+            </select>
+            
+            <button type="submit">Submit</button>
+        </form>
+        
+        <div id="pending" class="result" style="display:none;">
+            <h2>Decision:</h2>
+            <p>Decision Pending...</p>
+        </div>
+
+        {% if result %}
+        <div class="result">
+            <h2>Decision:</h2>
+            <div class="frame-container" id="frame-container">
+                {% for frame in frames %}
+                <img src="{{ url_for('static', filename=frame.filename) }}" alt="{{ frame.label }}" class="frame">
+                {% endfor %}
+                {% if feature == 'runout_stumping' %}
+                <img src="{{ url_for('static', filename='hit_frame.jpg') }}" alt="Hit Frame" class="frame">
+                {% elif feature == 'caught_behind' %}
+                <img src="{{ url_for('static', filename='spike_detected_frame.jpg') }}" alt="Spike Detected Frame" class="frame">
+                {% endif %}
+            </div>
+            <div id="decision" class="decision-box" style="display:none;">{{ result }}</div>
+        </div>
+        {% else %}
+        <div class="result">
+            <h2>Decision:</h2>
+            <p>Decision Pending...</p>
+        </div>
+        {% endif %}
+    </div>
+    <script>
+        function showPending() {
+            document.getElementById('pending').style.display = 'block';
+        }
+
+        function displayFrames() {
+            const frames = document.querySelectorAll('.frame-container .frame');
+            const decisionElement = document.getElementById('decision');
+            let index = 0;
+
+            function showNextFrame() {
+                if (index > 0) {
+                    frames[index - 1].style.display = 'none';
+                }
+                if (index < frames.length - 1) {
+                    frames[index].style.display = 'block';
+                    index++;
+                    setTimeout(showNextFrame, 500);  // Display each frame for 500ms
+                } else if (index === frames.length - 1) {
+                    frames[index].style.display = 'block';
+                    setTimeout(() => {
+                        decisionElement.style.display = 'flex';
+                    }, 1000);  // Display the last frame for 1000ms
+                }
+            }
+
+            showNextFrame();
+        }
+
+        window.onload = displayFrames;
+    </script>
+</body>
+</html>

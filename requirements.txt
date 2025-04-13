@@ -1,0 +1,9 @@
+Flask
+opencv-python
+tensorflow
+torch
+yolov5
+numpy
+Pillow
+werkzeug
+flask-cors
