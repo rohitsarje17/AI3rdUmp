@@ -1,9 +1,9 @@
 from flask import Blueprint, render_template, request, redirect, url_for, current_app
+import os
+from werkzeug.utils import secure_filename
 from .models.no_ball_model import NoBallModel
 from .models.runout_stumping_model import RunoutStumpingModel
 from .models.caught_behind_model import CaughtBehindModel
-import os
-from werkzeug.utils import secure_filename
 
 main = Blueprint('main', __name__)
 
@@ -18,42 +18,37 @@ def index():
     return render_template('index.html')
 
 @main.route('/process', methods=['POST'])
-def process():
+def process_video():
     if 'video' not in request.files:
         return redirect(request.url)
-    
+        
     video = request.files['video']
+    feature = request.form.get('feature')
+    
     if video.filename == '':
         return redirect(request.url)
-    
+        
     if video and allowed_file(video.filename):
         filename = secure_filename(video.filename)
-        video_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-        
-        # Ensure the upload directory exists
-        if not os.path.exists(current_app.config['UPLOAD_FOLDER']):
-            os.makedirs(current_app.config['UPLOAD_FOLDER'])
-        
-        print(f"Saving video to: {video_path}")  # Debug statement
-        video.save(video_path)
-        print(f"Video saved successfully to: {video_path}")  # Debug statement
-
-        feature = request.form.get('feature')
+        filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+        video.save(filepath)
         
         if feature == 'no_ball':
             model = NoBallModel()
-            result, frames = model.process_video(video_path)
-        elif feature == 'runout_stumping':
+            is_no_ball, frames = model.process_video(filepath)
+            # Change the result display for no ball detection
+            result = "No Ball" if is_no_ball else "Legal Ball"
+        elif feature in ['runout', 'stumping']:
             model = RunoutStumpingModel()
-            result, frames = model.process_video(video_path)
+            is_out, frames = model.process_video(filepath)
+            result = "OUT" if is_out else "NOT OUT"
         elif feature == 'caught_behind':
             model = CaughtBehindModel()
-            result, frames = model.process_video(video_path)
+            is_out, frames = model.process_video(filepath)
+            result = "OUT" if is_out else "NOT OUT"
         else:
-            result = "Invalid feature selected."
-            frames = []
-
-        decision = "Out" if result else "Not Out"
-        return render_template('index.html', result=decision, frames=frames)
-    
+            return redirect(request.url)
+            
+        return render_template('index.html', result=result, frames=frames, feature=feature)
+        
     return redirect(request.url)

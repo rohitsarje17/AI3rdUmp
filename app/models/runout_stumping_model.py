@@ -5,20 +5,25 @@ import torch
 import matplotlib.pyplot as plt
 from ultralytics import YOLO  # Correct way to load models now
 from roboflow import Roboflow
+import os
+from PIL import Image
+import io
+import requests
+from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 class RunoutStumpingModel:
     def __init__(self):
         stumps_model_path = 'E:\\BTech\\Project\\third-umpire-decision\\trainedModels\\stumps.pt'
-        batsman_model_path = 'E:\\BTech\\Project\\third-umpire-decision\\trainedModels\\insideOutside.pt'
-
-        # Use the latest YOLO format
+        
+        # Use the latest YOLO format for stumps detection
         self.stumps_model = YOLO(stumps_model_path)
-        self.batsman_model = YOLO(batsman_model_path)
-
-        # rf = Roboflow(api_key="eGBCVKyNP2NYRQpzleUF")
-        # project = rf.workspace("rohitsarje").project("insideoutside")
-        # version = project.version(4)
-        # self.batsman_model = version.model
+        
+        # Roboflow API settings for batsman inside/outside detection
+        self.API_KEY = "eGBCVKyNP2NYRQpzleUF"
+        self.MODEL_ENDPOINT = f"https://detect.roboflow.com/insideoutside/4?api_key={self.API_KEY}"
+        
+        # Confidence threshold for batsman detection
+        self.batsman_detection_threshold = 0.5
 
     def process_video(self, video_path):
         cap = cv2.VideoCapture(video_path)
@@ -68,9 +73,80 @@ class RunoutStumpingModel:
         return False
 
     def check_batsman_in_crease(self, frame):
-        results = self.batsman_model(frame)
-        for r in results:
-            for box in r.boxes:
-                if int(box.cls) == 1:  
-                    return False
-        return True
+        """
+        Uses Roboflow API to check if batsman is inside or outside the crease
+        Returns True if batsman is in crease, False if outside
+        """
+        batsman_position = self.detect_batsman_position_using_api(frame)
+        
+        # Debug the response to see all predictions
+        print(f"API Response: {batsman_position}")
+        
+        # If no predictions received, default to in crease (benefit of doubt to batsman)
+        if not batsman_position:
+            print("No predictions received from API, defaulting to Outside the  crease")
+            return False
+            
+        # Track highest confidence predictions for inside and outside
+        highest_inside_conf = 0
+        highest_outside_conf = 0
+        
+        # Process API results
+        for pred in batsman_position:
+            confidence = pred.get("confidence", 0)
+            class_name = pred.get("class", "")
+            
+            print(f"Prediction: Class={class_name}, Confidence={confidence:.2f}")
+            
+            # Track highest confidence for each class
+            if class_name == "Inside" and confidence > highest_inside_conf:
+                highest_inside_conf = confidence
+            elif class_name == "Outside" and confidence > highest_outside_conf:
+                highest_outside_conf = confidence
+        
+        # Decision logic - compare highest confidences
+        print(f"Highest inside confidence: {highest_inside_conf:.2f}")
+        print(f"Highest outside confidence: {highest_outside_conf:.2f}")
+        
+        # If outside confidence is higher than threshold and higher than inside confidence
+        if highest_outside_conf >= self.batsman_detection_threshold and highest_outside_conf > highest_inside_conf:
+            print(f"DECISION: Batsman is OUTSIDE crease with confidence {highest_outside_conf:.2f}")
+            return False
+        else:
+            # Either inside has higher confidence, or neither prediction meets threshold
+            print(f"DECISION: Batsman is INSIDE crease with confidence {highest_inside_conf:.2f}")
+            return True
+    
+    def detect_batsman_position_using_api(self, frame):
+        """
+        Detect batsman position in the frame using the Roboflow API
+        """
+        # Convert frame to PIL image
+        image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        pil_image = Image.fromarray(image)
+        
+        # Convert image to bytes for API
+        buffered = io.BytesIO()
+        pil_image.save(buffered, quality=100, format="JPEG")
+        
+        # Prepare multipart encoder for the API request
+        m = MultipartEncoder(fields={'file': ("imageToUpload", buffered.getvalue(), "image/jpeg")})
+        
+        # Send request to Roboflow API
+        try:
+            response = requests.post(
+                self.MODEL_ENDPOINT,
+                data=m,
+                headers={'Content-Type': m.content_type}
+            )
+            
+            if response.status_code == 200:
+                predictions = response.json().get("predictions", [])
+                return predictions
+            else:
+                print(f"Error: API request failed with status code {response.status_code}")
+                return []
+                
+        except Exception as e:
+            print(f"Error making API request: {e}")
+            return []

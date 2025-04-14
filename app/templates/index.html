@@ -4,141 +4,256 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <title>Third Umpire Decision</title>
-    <style>
-        .feature-box {
-            display: flex;
-            justify-content: space-around;
-            margin-top: 20px;
-        }
-        .feature-option {
-            width: 150px;
-            height: 150px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid #000;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        .feature-option:hover {
-            background-color: #f0f0f0;
-        }
-        .no-ball { background-color: #ffcccc; }
-        .runout-stumping { background-color: #ccffcc; }
-        .caught-behind { background-color: #ccccff; }
-        .frame {
-            margin: 10px;
-            border: 1px solid #ccc;
-            padding: 10px;
-            display: inline-block;
-        }
-        .frame img {
-            max-width: 100%;
-            height: auto;
-        }
-        .frame-container {
-            position: relative;
-            width: 640px; /* Adjust based on your frame size */
-            height: 480px; /* Adjust based on your frame size */
-        }
-        .frame-container img {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: none;
-        }
-        .decision-box {
-            width: 200px;
-            height: 200px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid #000;
-            margin-top: 20px;
-            font-size: 24px;
-            font-weight: bold;
-            text-align: center;
-        }
-    </style>
 </head>
 <body>
+    <div class="cricket-field-bg"></div>
+    
+    <header>
+        <div class="logo-container">
+            <div class="logo">DRS</div>
+            <h1>Decision Review System</h1>
+        </div>
+    </header>
+
     <div class="container">
-        <h1>Third Umpire Decision Automation</h1>
-        <form action="/process" method="post" enctype="multipart/form-data" onsubmit="showPending()">
-            <label for="video">Upload Video:</label>
-            <input type="file" id="video" name="video" accept="video/*" required>
-            
-            <label for="feature">Select Feature:</label>
-            <select id="feature" name="feature" required>
-                <option value="no_ball">No Ball Detection</option>
-                <option value="runout_stumping">Runout/Stumping Detection</option>
-                <option value="caught_behind">Caught Behind Detection</option>
-            </select>
-            
-            <button type="submit">Submit</button>
-        </form>
+        <div class="control-panel">
+            <form action="/process" method="post" enctype="multipart/form-data" onsubmit="showPending()">
+                <div class="form-group">
+                    <label for="video">Select Video Footage</label>
+                    <div class="file-input-container">
+                        <input type="file" id="video" name="video" accept="video/*" required>
+                        <div class="file-input-button">Browse Video</div>
+                        <div class="file-name" id="file-name">No file selected</div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Select Decision Type</label>
+                    <div class="feature-options">
+                        <div class="feature-option runout" data-value="runout">
+                            <div class="feature-icon">🏃‍♂️🏃‍♂️</div>
+                            <div>Runout</div>
+                        </div>
+                        <div class="feature-option caught-behind" data-value="caught_behind">
+                            <div class="feature-icon">🧤</div>
+                            <div>Caught Behind</div>
+                        </div>
+                        <div class="feature-option no-ball" data-value="no_ball">
+                            <div class="feature-icon">🏏</div>
+                            <div>No Ball</div>
+                        </div>
+                        <div class="feature-option stumping" data-value="stumping">
+                            <div class="feature-icon">🏃‍♂️</div>
+                            <div>Stumping</div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="feature" name="feature" value="runout" required>
+                </div>
+                
+                <button type="submit" class="submit-btn">Process Decision</button>
+            </form>
+        </div>
         
-        <div id="pending" class="result" style="display:none;">
-            <h2>Decision:</h2>
-            <p>Decision Pending...</p>
+        <div id="pending" class="result-panel pending-panel" style="display:none;">
+            <div class="spinner"></div>
+            <h2>Processing Decision...</h2>
+            <div class="processing-text">The Third Umpire is reviewing the footage</div>
         </div>
 
         {% if result %}
-        <div class="result">
-            <h2>Decision:</h2>
-            <div class="frame-container" id="frame-container">
-                {% for frame in frames %}
-                <img src="{{ url_for('static', filename=frame.filename) }}" alt="{{ frame.label }}" class="frame">
-                {% endfor %}
-                {% if feature == 'runout_stumping' %}
-                <img src="{{ url_for('static', filename='hit_frame.jpg') }}" alt="Hit Frame" class="frame">
-                {% elif feature == 'caught_behind' %}
-                <img src="{{ url_for('static', filename='spike_detected_frame.jpg') }}" alt="Spike Detected Frame" class="frame">
-                {% endif %}
+        <div class="result-panel">
+            <!-- Decision moved above the video review container -->
+            <div id="decision-container" class="decision-container">
+                <div id="decision-animation" class="decision-animation"></div>
+                <div id="decision" class="decision-box 
+                    {% if 'OUT' in result %}
+                        {% if feature == 'runout' %}
+                            runout
+                        {% elif feature == 'stumping' %}
+                            stumping
+                        {% elif feature == 'caught_behind' %}
+                            caught-behind
+                        {% else %}
+                            out
+                        {% endif %}
+                    {% elif 'No Ball' in result %}
+                        no-ball
+                    {% else %}
+                        not-out
+                    {% endif %}">
+                    <div class="decision-text">{{ result }}</div>
+                </div>
             </div>
-            <div id="decision" class="decision-box" style="display:none;">{{ result }}</div>
-        </div>
-        {% else %}
-        <div class="result">
-            <h2>Decision:</h2>
-            <p>Decision Pending...</p>
+            
+            <div class="video-review-container">
+                <div class="frame-container" id="frame-container">
+                    {% for frame in frames %}
+                    <img src="{{ url_for('static', filename=frame.filename) }}" alt="{{ frame.label }}" class="frame">
+                    {% endfor %}
+                </div>
+                <div class="frame-counter" id="frame-counter">Frame 0</div>
+                <div class="playback-controls">
+                    <button id="play-pause" class="control-btn">▶️ Play</button>
+                    <button id="slow-motion" class="control-btn">🐢 Slow Motion</button>
+                </div>
+            </div>
         </div>
         {% endif %}
     </div>
+
+    <footer>
+        <div class="footer-content">
+            <p>Official Decision Review System</p>
+        </div>
+    </footer>
+    
     <script>
+        // File input enhancement
+        document.getElementById('video').addEventListener('change', function(e) {
+            const fileName = e.target.files[0] ? e.target.files[0].name : 'No file selected';
+            document.getElementById('file-name').textContent = fileName;
+        });
+        
+        // Connect Browse Video button to file input
+        document.querySelector('.file-input-button').addEventListener('click', function() {
+            document.getElementById('video').click();
+        });
+        
+        // Feature selection
+        const featureOptions = document.querySelectorAll('.feature-option');
+        const featureInput = document.getElementById('feature');
+        
+        featureOptions.forEach(option => {
+            option.addEventListener('click', function() {
+                // Remove active class from all options
+                featureOptions.forEach(opt => opt.classList.remove('active'));
+                // Add active class to selected option
+                this.classList.add('active');
+                // Set the hidden input value
+                featureInput.value = this.dataset.value;
+            });
+        });
+        
+        // Set default active option
+        document.querySelector('.feature-option[data-value="' + featureInput.value + '"]').classList.add('active');
+        
         function showPending() {
-            document.getElementById('pending').style.display = 'block';
+            // Hide any previous results
+            const resultPanel = document.querySelector('.result-panel:not(.pending-panel)');
+            if (resultPanel) {
+                resultPanel.style.display = 'none';
+            }
+            
+            // Show the pending panel with animation
+            document.getElementById('pending').style.display = 'flex';
         }
 
         function displayFrames() {
-            const frames = document.querySelectorAll('.frame-container .frame');
+            const frameContainer = document.getElementById('frame-container');
+            if (!frameContainer) return;
+            
+            const frames = frameContainer.querySelectorAll('.frame');
             const decisionElement = document.getElementById('decision');
+            const frameCounter = document.getElementById('frame-counter');
+            const decisionContainer = document.getElementById('decision-container');
+            const decisionAnimation = document.getElementById('decision-animation');
+            
+            // Make sure all frames are initially hidden
+            frames.forEach(frame => {
+                frame.style.display = 'none';
+            });
+            
             let index = 0;
+            let playInterval;
+            let playSpeed = 500; // ms between frames
 
-            function showNextFrame() {
-                if (index > 0) {
-                    frames[index - 1].style.display = 'none';
+            function showFrame(idx) {
+                // Hide all frames
+                frames.forEach(frame => {
+                    frame.style.display = 'none';
+                });
+                
+                // Show the current frame
+                if (idx >= 0 && idx < frames.length) {
+                    frames[idx].style.display = 'block';
+                    frameCounter.textContent = `Frame ${idx + 1}`;
                 }
-                if (index < frames.length - 1) {
-                    frames[index].style.display = 'block';
-                    index++;
-                    setTimeout(showNextFrame, 500);  // Display each frame for 500ms
-                } else if (index === frames.length - 1) {
-                    frames[index].style.display = 'block';
+                
+                // Show decision on last frame
+                if (idx === frames.length - 1) {
                     setTimeout(() => {
-                        decisionElement.style.display = 'flex';
-                    }, 1000);  // Display the last frame for 1000ms
+                        decisionAnimation.classList.add('animate');
+                        setTimeout(() => {
+                            decisionContainer.classList.add('show');
+                            // Hide the pending message
+                            document.getElementById('pending').style.display = 'none';
+                            
+                            // Scroll to the decision container to ensure visibility
+                            decisionContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }, 1000);
+                    }, 500);
                 }
             }
 
-            showNextFrame();
+            function playFrames() {
+                clearInterval(playInterval);
+                playInterval = setInterval(() => {
+                    if (index < frames.length - 1) {
+                        index++;
+                        showFrame(index);
+                    } else {
+                        clearInterval(playInterval);
+                        document.getElementById('play-pause').textContent = '▶️ Play';
+                    }
+                }, playSpeed);
+            }
+            
+            // Play/Pause button functionality
+            const playPauseBtn = document.getElementById('play-pause');
+            playPauseBtn.addEventListener('click', () => {
+                if (playInterval) {
+                    clearInterval(playInterval);
+                    playInterval = null;
+                    playPauseBtn.textContent = '▶️ Play';
+                } else {
+                    playPauseBtn.textContent = '⏸️ Pause';
+                    playFrames();
+                }
+            });
+            
+            // Slow motion button
+            const slowMotionBtn = document.getElementById('slow-motion');
+            slowMotionBtn.addEventListener('click', () => {
+                if (playSpeed === 500) {
+                    playSpeed = 1000;
+                    slowMotionBtn.textContent = '🐇 Normal Speed';
+                } else {
+                    playSpeed = 500;
+                    slowMotionBtn.textContent = '🐢 Slow Motion';
+                }
+                
+                if (playInterval) {
+                    clearInterval(playInterval);
+                    playFrames();
+                }
+            });
+
+            // Hide the pending message and start the frame display
+            document.getElementById('pending').style.display = 'none';
+            showFrame(0);
+            
+            // Auto-start playback
+            setTimeout(() => {
+                playPauseBtn.click();
+            }, 500);
         }
 
+        // Check if result exists
+        {% if result %}
         window.onload = displayFrames;
+        {% endif %}
     </script>
 </body>
 </html>

@@ -66,11 +66,19 @@ class CaughtBehindModel:
                         print(decision_text)
                         cv2.putText(frame_rgb, decision_text, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
 
+                        # Save the frame to both upload and static folders
                         cv2.imwrite(current_app.config['UPLOAD_FOLDER'] + '/spike_detected_frame.jpg', cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR))
+                        cv2.imwrite(current_app.config['STATIC_FOLDER'] + '/spike_detected_frame.jpg', cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR))
+                        
+                        # Create and save plot
+                        plt.figure(figsize=(10, 8))
                         plt.imshow(frame_rgb)
+                        plt.title(decision_text)
+                        plt.axis('off')
                         plt.savefig(current_app.config['STATIC_FOLDER'] + '/spike_detected_frame_plot.jpg')
+                        plt.close()  # Close the figure to avoid memory leaks
 
-                        frames.append({'filename': 'spike_detected_frame.jpg', 'label': 'Spike Detected Frame'})  # Ensure spike_detected_frame is the last frame
+                        frames.append({'filename': 'spike_detected_frame.jpg', 'label': 'Spike Detected Frame'})
                         cap.release()
                         break
 
