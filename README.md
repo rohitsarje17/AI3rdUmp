@@ -41,7 +41,7 @@ third-umpire-decision
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/third-umpire-decision.git
+   git clone https://github.com/rohitsarje17/AI3rdUmp.git
    cd third-umpire-decision
    ```
 
@@ -66,7 +66,3 @@ third-umpire-decision
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a pull request or open an issue for any suggestions or improvements.
-
-## License
-
-This project is licensed under the MIT License. See the LICENSE file for details.
