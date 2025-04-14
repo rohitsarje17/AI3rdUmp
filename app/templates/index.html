@@ -53,6 +53,11 @@
                 </div>
                 
                 <button type="submit" class="submit-btn">Process Decision</button>
+                <div class="performance-link" style="text-align: center; margin-top: 15px;">
+                    <a href="{{ url_for('main.performance') }}" style="color: var(--accent-color); text-decoration: none;">
+                        Run Performance Tests
+                    </a>
+                </div>
             </form>
         </div>
         
@@ -97,6 +102,7 @@
                 <div class="playback-controls">
                     <button id="play-pause" class="control-btn">▶️ Play</button>
                     <button id="slow-motion" class="control-btn">🐢 Slow Motion</button>
+                    <button id="fast-forward" class="control-btn">⏩ Fast Forward</button>
                 </div>
             </div>
         </div>
@@ -229,9 +235,28 @@
                 if (playSpeed === 500) {
                     playSpeed = 1000;
                     slowMotionBtn.textContent = '🐇 Normal Speed';
+                    fastForwardBtn.textContent = '⏩ Fast Forward';
                 } else {
                     playSpeed = 500;
                     slowMotionBtn.textContent = '🐢 Slow Motion';
+                }
+                
+                if (playInterval) {
+                    clearInterval(playInterval);
+                    playFrames();
+                }
+            });
+            
+            // Fast forward button
+            const fastForwardBtn = document.getElementById('fast-forward');
+            fastForwardBtn.addEventListener('click', () => {
+                if (playSpeed === 500) {
+                    playSpeed = 200;
+                    fastForwardBtn.textContent = '⏮️ Normal Speed';
+                    slowMotionBtn.textContent = '🐢 Slow Motion';
+                } else {
+                    playSpeed = 500;
+                    fastForwardBtn.textContent = '⏩ Fast Forward';
                 }
                 
                 if (playInterval) {
